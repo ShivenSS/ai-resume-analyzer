@@ -92,7 +92,7 @@ Call submit_resume_analysis with your structured analysis."""
 
 if __name__ == "__main__":
     sample_resume = """
-    Shiven - First-year CS student, University of Toronto Mississauga.
+    Shiven - First-year CS student, University of Toronto.
     Coursework: Data Structures (CSC148), Discrete Math (MAT102), Calculus.
     Skills: Python, basic algorithms, recursion, tree/graph traversal.
     """
