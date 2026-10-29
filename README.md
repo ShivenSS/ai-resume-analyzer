@@ -81,3 +81,20 @@ streamlit run frontend/app.py
 ```
 
 Open http://localhost:8501, upload a PDF resume, paste a job description, and click Analyze.
+
+## Limitations
+
+- **Structured output guarantees shape, not accuracy.** Claude always returns the right JSON fields, but the content can still be wrong or inferred. For example, early runs padded the "matched skills" list with resume skills the job description never mentioned.
+- **Strict skill matching favors precision over recall.** A skill only counts as matched if the job description names it literally, so aliases like "JS" vs "JavaScript" are dropped even when a human would call them a match.
+- **Output is not deterministic.** The same resume and job description can produce slightly different scores and wording between runs. Date arithmetic (year of study) was unreliable until the prompt included a worked example.
+- **Advice is generic in places.** The model sometimes suggests removing non-technical experience, which is not always good advice for a first internship.
+- **Text-based PDFs only.** Scanned image resumes are rejected with a clear error.
+- **Long inputs are truncated.** Only the first 8,000 characters of the resume and 4,000 of the job description are scored.
+- **Not yet evaluated.** There is no labeled test set measuring scoring consistency.
+
+## Future improvements
+
+- Score a resume for a general role without requiring a job description
+- Add an alias table so equivalent skill names (JS / JavaScript) match
+- Build a small evaluation set of resume/job-description pairs to measure score consistency across runs
+- Deploy with rate limiting
