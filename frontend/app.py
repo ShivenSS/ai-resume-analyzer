@@ -1,7 +1,16 @@
+import os
 import requests
 import streamlit as st
 
-API_URL = "http://127.0.0.1:8000/analyze"
+
+def get_api_url() -> str:
+    try:
+        return st.secrets["API_URL"]
+    except Exception:
+        return os.environ.get("API_URL", "http://127.0.0.1:8000/analyze")
+
+
+API_URL = get_api_url()
 
 st.title("AI Resume Analyzer")
 st.write("Upload your resume and paste a job description to see how well they match.")
@@ -15,13 +24,13 @@ if st.button("Analyze"):
     elif not job_description.strip():
         st.warning("Please paste a job description.")
     else:
-        with st.spinner("Analyzing..."):
+        with st.spinner("Analyzing... the first request after a quiet period can take up to a minute while the server wakes up."):
             try:
                 response = requests.post(
                     API_URL,
                     files={"resume": (resume_file.name, resume_file.getvalue(), "application/pdf")},
                     data={"job_description": job_description},
-                    timeout=60,
+                    timeout=120,
                 )
             except requests.exceptions.RequestException:
                 st.error("Could not reach the scoring service. Is the backend running?")
