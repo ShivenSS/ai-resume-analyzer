@@ -2,6 +2,8 @@ import os
 import json
 from anthropic import Anthropic
 from dotenv import load_dotenv
+from datetime import date
+import re
 
 load_dotenv()
 
@@ -11,7 +13,7 @@ client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 SCORE_TOOL = {
     "name": "submit_resume_analysis",
-    "description": "Submit a structured analysis of how well a resume matches a job description.",
+    "description": "Only skills, tools, languages, or frameworks that are explicitly named in the job description text AND appear in the resume. Never include a resume skill that the job description does not mention. If nothing overlaps, return an empty list. Do not include degree programs or education levels.",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -19,10 +21,10 @@ SCORE_TOOL = {
                 "type": "integer",
                 "description": "Overall match score from 0-100",
             },
-            "skills_matched": {
+             "skills_matched": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Skills/keywords from the JD that appear in the resume",
+                "description": "Technical skills, tools, languages, or frameworks from the JD that appear in the resume. Do not include degree programs, education levels, or soft qualifications.",
             },
             "skills_missing": {
                 "type": "array",
@@ -53,8 +55,29 @@ SYSTEM_PROMPT = """You are an expert technical recruiter and resume reviewer.
 You give honest, specific, and actionable feedback. You do not inflate scores
 to make the candidate feel good — a generic or weak resume against a
 demanding JD should score low. Be precise about which skills are present
-vs. missing; do not hallucinate skills that are not actually in the resume text."""
+vs. missing; do not hallucinate skills that are not actually in the resume text.
 
+Rules:
+- Only list a skill as matched if the job description itself names it. Never pad
+  the matched list with resume skills the job description does not ask for.
+- Do not state or assume facts that are not on the resume. Where something is
+  ambiguous, say so rather than guessing.
+- Compute year of study carefully. Take the program start year from the resume.
+  If today's month is September or later, year of study = (current year - start
+  year) + 1. Otherwise year of study = (current year - start year).
+  Example: a program that started in September 2025, viewed in October 2026,
+  is in its 2nd year."""
+
+def _mentioned_in(skill: str, text: str) -> bool:
+    """True if the skill appears in the text as a whole word/term."""
+    for part in skill.split("/"):
+        part = part.strip()
+        if not part:
+            continue
+        pattern = r"(?<![A-Za-z0-9])" + re.escape(part) + r"(?![A-Za-z0-9])"
+        if re.search(pattern, text, re.IGNORECASE):
+            return True
+    return False
 
 def score_resume(resume_text: str, job_description: str) -> dict:
     if not resume_text.strip():
@@ -62,7 +85,9 @@ def score_resume(resume_text: str, job_description: str) -> dict:
     if not job_description.strip():
         raise ValueError("Job description text is empty.")
 
-    user_message = f"""Analyze this resume against this job description.
+    user_message = f"""Today's date is {date.today().isoformat()}.
+
+Analyze this resume against this job description.
 
 RESUME:
 {resume_text[:8000]}
@@ -86,7 +111,13 @@ Call submit_resume_analysis with your structured analysis."""
 
     for block in response.content:
         if block.type == "tool_use" and block.name == "submit_resume_analysis":
-            return block.input
+            result = block.input
+            jd_text = job_description[:4000]
+            result["skills_matched"] = [
+                skill for skill in result["skills_matched"]
+                if _mentioned_in(skill, jd_text)
+            ]
+            return result
 
     raise RuntimeError("Claude did not return the expected tool call.")
 
