@@ -9,22 +9,25 @@ load_dotenv()
 
 MODEL = "claude-sonnet-4-5"
 
+MAX_RESUME_CHARS = 8000
+MAX_JD_CHARS = 12000
+
 client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
 
 SCORE_TOOL = {
     "name": "submit_resume_analysis",
-    "description": "Only skills, tools, languages, or frameworks that are explicitly named in the job description text AND appear in the resume. Never include a resume skill that the job description does not mention. If nothing overlaps, return an empty list. Do not include degree programs or education levels.",
-    "input_schema": {
+    "description": "Submit a structured analysis of how well a resume matches a job description.",
+        "input_schema": {
         "type": "object",
         "properties": {
             "overall_score": {
                 "type": "integer",
                 "description": "Overall match score from 0-100",
             },
-             "skills_matched": {
+            "skills_matched": {
                 "type": "array",
                 "items": {"type": "string"},
-                "description": "Technical skills, tools, languages, or frameworks from the JD that appear in the resume. Do not include degree programs, education levels, or soft qualifications.",
+                "description": "Only skills, tools, languages, or frameworks that are explicitly named in the job description text AND appear in the resume. Never include a resume skill that the job description does not mention. If nothing overlaps, return an empty list. Do not include degree programs or education levels.",
             },
             "skills_missing": {
                 "type": "array",
@@ -66,7 +69,8 @@ Rules:
   If today's month is September or later, year of study = (current year - start
   year) + 1. Otherwise year of study = (current year - start year).
   Example: a program that started in September 2025, viewed in October 2026,
-  is in its 2nd year."""
+  is in its 2nd year.
+- Refer to the candidate as "the candidate" or "you". Never guess gender or use gendered pronouns."""
 
 def _mentioned_in(skill: str, text: str) -> bool:
     """True if the skill appears in the text as a whole word/term."""
@@ -84,16 +88,18 @@ def score_resume(resume_text: str, job_description: str) -> dict:
         raise ValueError("Resume text is empty.")
     if not job_description.strip():
         raise ValueError("Job description text is empty.")
+                
+    jd_text = job_description[:MAX_JD_CHARS]
 
     user_message = f"""Today's date is {date.today().isoformat()}.
 
 Analyze this resume against this job description.
 
 RESUME:
-{resume_text[:8000]}
+{resume_text[:MAX_RESUME_CHARS]}
 
 JOB DESCRIPTION:
-{job_description[:4000]}
+{jd_text}
 
 Call submit_resume_analysis with your structured analysis."""
 
@@ -112,7 +118,6 @@ Call submit_resume_analysis with your structured analysis."""
     for block in response.content:
         if block.type == "tool_use" and block.name == "submit_resume_analysis":
             result = block.input
-            jd_text = job_description[:4000]
             result["skills_matched"] = [
                 skill for skill in result["skills_matched"]
                 if _mentioned_in(skill, jd_text)
