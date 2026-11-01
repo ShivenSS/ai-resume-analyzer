@@ -101,5 +101,4 @@ Open http://localhost:8501, upload a PDF resume, paste a job description, and cl
 - Score a resume for a general role without requiring a job description
 - Add an alias table so equivalent skill names (JS / JavaScript) match
 - Build a small evaluation set of resume/job-description pairs to measure score consistency across runs
-- Deploy with rate limiting
 - Warn the user in the UI when their input was truncated
