@@ -1,6 +1,6 @@
 # AI Resume Analyzer
 
-Upload a resume PDF and paste a job description. The app uses Claude to return a structured match report: an overall score, matched and missing skills, an experience- lignment summary, and concrete recommendations.
+Upload a resume PDF and paste a job description. The app uses Claude to return a structured match report: an overall score, matched and missing skills, an experience alignment summary, and concrete recommendations.
 
 ## Why I built it
 
@@ -13,6 +13,7 @@ When I started my internship search, my applications kept getting rejected autom
 - Filters the "matched skills" list in code, so only skills the job description actually names can appear
 - REST API built with FastAPI, with distinct error codes for bad input (400) and upstream failures (502)
 - Streamlit frontend with a score display and side-by-side matched/missing skills
+- Global rate limit on the API (HTTP 429) to protect API credits on the public demo
 
 ## Architecture
 
@@ -45,6 +46,7 @@ JSON response -> Streamlit renders score, skills, recommendations
 - FastAPI and Uvicorn for the backend
 - Streamlit for the frontend
 - pypdf for PDF text extraction
+- Deployed on Render (backend) and Streamlit Community Cloud (frontend)
 
 ## Running it locally
 
@@ -89,8 +91,10 @@ Open http://localhost:8501, upload a PDF resume, paste a job description, and cl
 - **Output is not deterministic.** The same resume and job description can produce slightly different scores and wording between runs. Date arithmetic (year of study) was unreliable until the prompt included a worked example.
 - **Advice is generic in places.** The model sometimes suggests removing non-technical experience, which is not always good advice for a first internship.
 - **Text-based PDFs only.** Scanned image resumes are rejected with a clear error.
-- **Long inputs are truncated.** Only the first 8,000 characters of the resume and 4,000 of the job description are scored.
 - **Not yet evaluated.** There is no labeled test set measuring scoring consistency.
+- **Long inputs are truncated silently.** Only the first 8,000 characters of the resume and 12,000 of the job description are analyzed, and anything past that is ignored without warning to the user.
+- **Only the matched-skills list is verified in code.** The missing-skills list and the recommendations are the model's judgment and can include skills the posting never mentions.
+- **The rate limit is a global in-memory counter** (10 requests per hour across all visitors). It resets whenever the free-tier server restarts, so it is a safeguard for a demo, not production-grade protection.
 
 ## Future improvements
 
@@ -98,3 +102,4 @@ Open http://localhost:8501, upload a PDF resume, paste a job description, and cl
 - Add an alias table so equivalent skill names (JS / JavaScript) match
 - Build a small evaluation set of resume/job-description pairs to measure score consistency across runs
 - Deploy with rate limiting
+- Warn the user in the UI when their input was truncated
