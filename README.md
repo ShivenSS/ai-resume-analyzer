@@ -1,5 +1,11 @@
 # AI Resume Analyzer
 
+**Live demo:** https://shivenss-ai-resume-analyzer-frontendapp-ywwvku.streamlit.app
+
+*Free-tier hosting: the first request after a quiet period can take up to a minute while the backend wakes up. The demo is rate-limited.*
+
+![Demo](demo.gif)
+
 Upload a resume PDF and paste a job description. The app uses Claude to return a structured match report: an overall score, matched and missing skills, an experience alignment summary, and concrete recommendations.
 
 ## Why I built it
